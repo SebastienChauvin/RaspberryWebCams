@@ -1,5 +1,7 @@
 #!/bin/bash
 
+ cd $(dirname "$0")
+
 . config.sh
 
 # ===== Ensure local dir =====
@@ -20,6 +22,7 @@ for cam in "${CAMS[@]}"; do
 
   IMG_FILE="$CAM_DIR/${TIMESTAMP}.jpg"
   LAST_IMG="$CAM_DIR/latest.jpg"
+  LAST_NAME="$CAM_DIR/last.txt"
 
   echo "Capturing $CAM_ID ($CAM_TYPE)..."
 
@@ -39,8 +42,10 @@ for cam in "${CAMS[@]}"; do
       -quality 92 "$IMG_FILE"
   # Update latest.jpg
   ln -f "$IMG_FILE" "$LAST_IMG"
-
-  FTP_CMDS+="mkdir -p ~/$REMOTE_DIR/$CAM_ID\ncd ~/$REMOTE_DIR/$CAM_ID\nput \"$IMG_FILE\"\nput \"$LAST_IMG\"\n"
+  echo "${TIMESTAMP}.jpg" > $LAST_NAME
+  FTP_CMDS+="mkdir -p ~/$REMOTE_DIR/$CAM_ID\ncd ~/$REMOTE_DIR/$CAM_ID\nput \"$IMG_FILE\"\nput \"$LAST_NAME\"\n"
 done
 
 echo -e "$FTP_CMDS bye" | lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST"
+
+echo "Done."

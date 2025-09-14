@@ -1,0 +1,9 @@
+[Unit]
+Description=Multi-camera capture and upload
+
+[Service]
+ExecStart=/bin/bash -c 'while true; do /home/pi/scripts/webcams.sh; sleep 10; done'
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
