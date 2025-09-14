@@ -4,6 +4,14 @@ $dir = __DIR__;
 $images = glob($dir . '/*.jpg');
 sort($images); // Oldest first
 
+// Get list of subdirectories (ignore . and ..)
+$dirs = array_filter(glob($dir . '/../cam*'), 'is_dir');
+sort($dirs); // Optional: sort alphabetically
+
+// Determine current directory (from query)
+$currentDir = isset($_GET['dir']) ? $_GET['dir'] : (count($dirs) ? basename(reset($dirs)) : '');
+$currentPath = $dir . '/../' . $currentDir;
+
 // Helper: extract timestamp from filename
 function timestampFromFilename($filename)
 {
@@ -12,7 +20,11 @@ function timestampFromFilename($filename)
 }
 
 // Determine current index
-$currentIndex = isset($_GET['i']) ? (int)$_GET['i'] : count($images) - 1;
+if (!isset($_GET['i']) || $_GET['i'] === 'last') {
+    $currentIndex = count($images) - 1;
+} else {
+    $currentIndex = (int)$_GET['i'];
+}
 if ($currentIndex < 0) $currentIndex = 0;
 if ($currentIndex >= count($images)) $currentIndex = count($images) - 1;
 
@@ -44,6 +56,29 @@ $timePart = explode(' ', $currentTimestamp)[1];
 
         h1 {
             margin-bottom: 30px;
+        }
+
+        .dir-buttons {
+            margin-bottom: 20px;
+        }
+
+        .dir-buttons form {
+            display: inline-block;
+            margin: 0 5px;
+        }
+
+        .dir-buttons button {
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: none;
+            background-color: #0984e3;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .dir-buttons button:hover {
+            background-color: #0652dd;
         }
 
         img {
@@ -106,7 +141,7 @@ $timePart = explode(' ', $currentTimestamp)[1];
         <input type="hidden" name="i" id="hiddenIndex" value="<?php echo $currentIndex; ?>">
         <button type="submit">Afficher</button>
     </form>
-    <a href="?i=<?php echo $lastIndex; ?>">
+    <a href="?i=last">
         <button>Maintenant</button>
     </a>
     <a href="?i=<?php echo $nextIndex; ?>">
