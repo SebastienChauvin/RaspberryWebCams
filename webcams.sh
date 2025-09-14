@@ -7,7 +7,7 @@
 # ===== Ensure local dir =====
 mkdir -p "$LOCAL_DIR"
 
-FTP_CMDS="set ssl:verify-certificate no\nmkdir -p $REMOTE_DIR\ncd $REMOTE_DIR\n"
+FTP_CMDS=""
 
 # ===== Process each camera =====
 for cam in "${CAMS[@]}"; do
@@ -43,7 +43,7 @@ for cam in "${CAMS[@]}"; do
   # Update latest.jpg
   ln -f "$IMG_FILE" "$LAST_IMG"
   echo "${TIMESTAMP}.jpg" > $LAST_NAME
-  FTP_CMDS+="mkdir -p ~/$REMOTE_DIR/$CAM_ID\ncd ~/$REMOTE_DIR/$CAM_ID\nput \"$IMG_FILE\"\nput \"$LAST_NAME\"\n"
+  FTP_CMDS+="cd ~/$REMOTE_DIR/$CAM_ID\nput \"$IMG_FILE\"\nput \"$LAST_NAME\"\n"
 done
 
 echo -e "$FTP_CMDS bye" | lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST"
