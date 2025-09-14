@@ -39,6 +39,8 @@ $lastIndex = count($images) - 1;
 $currentTimestamp = timestampFromFilename($currentImage)->format('Y-m-d H:i');
 $datePart = explode(' ', $currentTimestamp)[0];
 $timePart = explode(' ', $currentTimestamp)[1];
+
+$autorefresh = !isset($_GET['autorefresh']) && !isset($_GET['i']) || $_GET['autorefresh'] === '1';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -140,10 +142,10 @@ $timePart = explode(' ', $currentTimestamp)[1];
         <input type="time" id="timeInput" value="<?php echo $timePart; ?>" required>
         <input type="hidden" name="i" id="hiddenIndex" value="<?php echo $currentIndex; ?>">
         <button type="submit">Afficher</button>
+        <label>
+            <input type="checkbox" id="autorefreshBox" <?php echo $autorefresh ? 'checked' : ''; ?>> En direct
+        </label>
     </form>
-    <a href="?i=last">
-        <button>Maintenant</button>
-    </a>
     <a href="?i=<?php echo $nextIndex; ?>">
         <button>&#9654;</button>
     </a>
@@ -184,9 +186,33 @@ $timePart = explode(' ', $currentTimestamp)[1];
             }
         });
 
-        window.location.href = '?i=' + closestIdx;
+        window.location.replace('?i=' + closestIdx);
     });
 </script>
 
+<script>
+    // Handle auto-refresh checkbox
+    const box = document.getElementById('autorefreshBox');
+
+    const refresh = () => {
+        const params = new URLSearchParams(window.location.search);
+        params.set('autorefresh', box.checked ? '1' : '0');
+        params.delete('i')
+        if (box.checked) {
+            window.location.replace('?' + params.toString());
+        } else {
+            window.location.search = params.toString();
+        }
+    }
+
+    if (box) {
+        box.addEventListener('change', refresh);
+    }
+
+    // Auto-refresh every 10s if enabled
+    <?php if($autorefresh): ?>
+    setTimeout(refresh, 20000);
+    <?php endif; ?>
+</script>
 </body>
 </html>
