@@ -4,9 +4,6 @@
 
 . config.sh
 
-# ===== Ensure local dir =====
-mkdir -p "$LOCAL_DIR"
-
 FTP_CMDS=""
 
 # ===== Process each camera =====
