@@ -1,46 +1,70 @@
 <?php
+$datetime = $_GET['d'] ?? date('YmdHis');
+$autorefresh = !isset($_GET['autorefresh']) && !isset($_GET['d']) || $_GET['autorefresh'] === '1';
+
+if (!preg_match('/^20\d{12}$/', $datetime)) {
+    http_response_code(400);
+    echo "Error: Invalid date format " . $datetime;
+    exit;
+}
+$date = substr($datetime, 0, 8); // YYYYMMDD
+$hour = substr($datetime, 8, 2); // HH
+$minute = substr($datetime, 10, 2); // MM
+$second = substr($datetime, 12, 2); // SS
+$time = substr($datetime, 8, 6); // HHMMSS
+
 // Directory containing images
 $dir = __DIR__;
-$images = glob($dir . '/*.jpg');
+$images = glob($dir . '/$date/$hour$minute??.jpg');
+if (!$images) {
+    $images = glob($dir . '/*/*.jpg');
+    if (!$images) {
+        http_response_code(404);
+        echo "Error: No images found.";
+        exit;
+    }
+}
+$images = array_map(function ($img) {
+    return basename($img, '.jpg');
+}, $images);
 sort($images); // Oldest first
 
-// Get list of subdirectories (ignore . and ..)
-$dirs = array_filter(glob($dir . '/../cam*'), 'is_dir');
-sort($dirs); // Optional: sort alphabetically
-
-// Determine current directory (from query)
-$currentDir = isset($_GET['dir']) ? $_GET['dir'] : (count($dirs) ? basename(reset($dirs)) : '');
-$currentPath = $dir . '/../' . $currentDir;
-
-// Helper: extract timestamp from filename
-function timestampFromFilename($filename)
+function timestampFromFilename($n)
 {
-    $base = basename($filename, '.jpg');
-    return DateTime::createFromFormat('Ymd_His', $base);
+    return DateTime::createFromFormat('His', $n);
 }
 
-// Determine current index
-if (!isset($_GET['i']) || $_GET['i'] === 'last') {
-    $currentIndex = count($images) - 1;
-} else {
-    $currentIndex = (int)$_GET['i'];
+$closestIndex = -1;
+$closestDiff = 999999999;
+$targetTime = timestampFromFilename($time);
+$currentIndex = 0;
+
+foreach ($images as $index => $img) {
+    $ts = timestampFromFilename($img);
+    if (!$ts) continue;
+
+    $diff = abs($ts->getTimestamp() - $targetTime->getTimestamp());
+    if ($diff < $closestDiff) {
+        $closestDiff = $diff;
+        $currentIndex = $index;
+    }
 }
-if ($currentIndex < 0) $currentIndex = 0;
-if ($currentIndex >= count($images)) $currentIndex = count($images) - 1;
-
-$currentImage = $images[$currentIndex];
-
+$currentImage = "$date" . "/" . $images[$currentIndex];
 // Previous / Next indices
-$prevIndex = max($currentIndex - 1, 0);
-$nextIndex = min($currentIndex + 1, count($images) - 1);
-$lastIndex = count($images) - 1;
+if ($currentIndex > 0) {
+    $prevImage = "$date" . $images[$currentIndex - 1];
+} else {
+    $prevDate = date('Ymd', strtotime($date . ' -1 day'));
+    $prevImage = $prevDate . "235900";
+}
 
-// Current timestamp for date/time inputs
-$currentTimestamp = timestampFromFilename($currentImage)->format('Y-m-d H:i');
-$datePart = explode(' ', $currentTimestamp)[0];
-$timePart = explode(' ', $currentTimestamp)[1];
+if ($currentIndex < count($images) - 1)
+    $nextImage = "$date" . $images[$currentIndex + 1];
+else {
+    $nextDate = date('Ymd', strtotime($date . ' +1 day'));
+    $nextImage = $nextDate . "000000";
+}
 
-$autorefresh = !isset($_GET['autorefresh']) && !isset($_GET['i']) || $_GET['autorefresh'] === '1';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -134,59 +158,34 @@ $autorefresh = !isset($_GET['autorefresh']) && !isset($_GET['i']) || $_GET['auto
 <body>
 
 <div class="nav-buttons">
-    <a href="?i=<?php echo $prevIndex; ?>">
+    <a href="?d=<?php echo $prevImage; ?>">
         <button>&#9664;</button>
     </a>
     <form method="get" id="selectorForm">
-        <input type="date" id="dateInput" value="<?php echo $datePart; ?>" required>
-        <input type="time" id="timeInput" value="<?php echo $timePart; ?>" required>
-        <input type="hidden" name="i" id="hiddenIndex" value="<?php echo $currentIndex; ?>">
+        <input type="date" id="dateInput" value="<?php
+        echo substr($date, 0, 4) . '-' . substr($date, 4, 2) . '-' . substr($date, 6, 2);
+        ?>" required>
+        <input type="time" id="timeInput"
+               value="<?php echo substr($time, 0, 2) . ':' . substr($time, 2, 2) . ':' . substr($time, 4, 2);
+               ?>" required>
         <button type="submit">Afficher</button>
         <label>
             <input type="checkbox" id="autorefreshBox" <?php echo $autorefresh ? 'checked' : ''; ?>> En direct
         </label>
     </form>
-    <a href="?i=<?php echo $nextIndex; ?>">
+    <a href="?t=<?php echo $nextImage; ?>">
         <button>&#9654;</button>
     </a>
 </div>
 
-<img src="<?php echo basename($currentImage); ?>" alt="Current image">
+<img src="<?php echo "$currentImage" ?>.jpg" alt="Current image">
 
 <script>
-    // Combine date and time when submitting form to find closest image
     const form = document.getElementById('selectorForm');
-    const dateInput = document.getElementById('dateInput');
-    const timeInput = document.getElementById('timeInput');
-    const hiddenIndex = document.getElementById('hiddenIndex');
-
-    form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        const selectedDateTime = dateInput.value + ' ' + timeInput.value;
-
-        // Find closest image index
-        const images = <?php echo json_encode(array_map('basename', $images)); ?>;
-        let closestDiff = null;
-        let closestIdx = <?php echo $currentIndex; ?>;
-
-        function parseTimestamp(filename) {
-            const parts = filename.replace('.jpg', '').split('_');
-            const date = parts[0], time = parts[1];
-            return new Date(date.substr(0, 4) + '-' + date.substr(4, 2) + '-' + date.substr(6, 2) + 'T' + time.substr(0, 2) + ':' + time.substr(2, 2) + ':' + time.substr(4, 2));
-        }
-
-        const targetTime = new Date(selectedDateTime + ':00');
-
-        images.forEach((img, idx) => {
-            const imgTime = parseTimestamp(img);
-            const diff = Math.abs(imgTime - targetTime);
-            if (closestDiff === null || diff < closestDiff) {
-                closestDiff = diff;
-                closestIdx = idx;
-            }
-        });
-
-        window.location.replace('?i=' + closestIdx);
+    form.addEventListener('submit', function () {
+        const dateInput = document.getElementById('dateInput');
+        const timeInput = document.getElementById('timeInput');
+        window.location.replace('?d=' + dateInput.value.replace(/-/g, '') + timeInput.value.replace(/:/g, ''));
     });
 </script>
 
@@ -197,7 +196,7 @@ $autorefresh = !isset($_GET['autorefresh']) && !isset($_GET['i']) || $_GET['auto
     const refresh = () => {
         const params = new URLSearchParams(window.location.search);
         params.set('autorefresh', box.checked ? '1' : '0');
-        params.delete('i')
+        params.delete('d')
         if (box.checked) {
             window.location.replace('?' + params.toString());
         } else {
