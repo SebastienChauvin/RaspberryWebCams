@@ -84,29 +84,6 @@ else {
             margin-bottom: 30px;
         }
 
-        .dir-buttons {
-            margin-bottom: 20px;
-        }
-
-        .dir-buttons form {
-            display: inline-block;
-            margin: 0 5px;
-        }
-
-        .dir-buttons button {
-            padding: 8px 15px;
-            border-radius: 5px;
-            border: none;
-            background-color: #0984e3;
-            color: #fff;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .dir-buttons button:hover {
-            background-color: #0652dd;
-        }
-
         img {
             max-width: 90%;
             max-height: 70vh;
