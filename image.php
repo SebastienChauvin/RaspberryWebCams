@@ -15,27 +15,28 @@ $time = substr($datetime, 8, 6); // HHMMSS
 
 // Directory containing images
 $dir = __DIR__;
-$images = glob($dir . '/$date/$hour$minute??.jpg');
-if (!$images) {
-    $images = glob($dir . '/*/*.jpg');
+//$images = glob($dir . "/$date/$hour$minute??.jpg");
+//if (!$images) {
+    $images = glob($dir . "/$date/*.jpg");
     if (!$images) {
         http_response_code(404);
         echo "Error: No images found.";
         exit;
     }
-}
+//}
 $images = array_map(function ($img) {
     return basename($img, '.jpg');
 }, $images);
 sort($images); // Oldest first
 
+//echo 'Found ' . count($images) . " images for date $date in $dir\n";
 function timestampFromFilename($n)
 {
     return DateTime::createFromFormat('His', $n);
 }
 
 $closestIndex = -1;
-$closestDiff = 999999999;
+$closestDiff = PHP_INT_MAX;
 $targetTime = timestampFromFilename($time);
 $currentIndex = 0;
 
@@ -44,12 +45,17 @@ foreach ($images as $index => $img) {
     if (!$ts) continue;
 
     $diff = abs($ts->getTimestamp() - $targetTime->getTimestamp());
+    //echo "$index : " . $img . " _  " . $ts->getTimestamp() . " - " . $targetTime->getTimestamp() . " = $diff -> $currentIndex\n";
     if ($diff < $closestDiff) {
         $closestDiff = $diff;
         $currentIndex = $index;
     }
 }
-$currentImage = "$date" . "/" . $images[$currentIndex];
+
+$currentTime = $images[$currentIndex];
+$currentImage = "$date" . "/" . $currentTime;
+//echo "Current image: $currentImage (index $currentIndex)\n";
+
 // Previous / Next indices
 if ($currentIndex > 0) {
     $prevImage = "$date" . $images[$currentIndex - 1];
@@ -62,7 +68,12 @@ if ($currentIndex < count($images) - 1)
     $nextImage = "$date" . $images[$currentIndex + 1];
 else {
     $nextDate = date('Ymd', strtotime($date . ' +1 day'));
-    $nextImage = $nextDate . "000000";
+    if ($nextDate > date('Ymd')) {
+        $nextDate = date('Ymd');
+        $nextImage = "235959";
+    } else {
+        $nextImage = $nextDate . "000000";
+    }
 }
 
 ?>
@@ -143,14 +154,14 @@ else {
         echo substr($date, 0, 4) . '-' . substr($date, 4, 2) . '-' . substr($date, 6, 2);
         ?>" required>
         <input type="time" id="timeInput"
-               value="<?php echo substr($time, 0, 2) . ':' . substr($time, 2, 2) . ':' . substr($time, 4, 2);
+               value="<?php echo substr($currentTime, 0, 2) . ':' . substr($currentTime, 2, 2) . ':' . substr($currentTime, 4, 2);
                ?>" required>
         <button type="submit">Afficher</button>
         <label>
             <input type="checkbox" id="autorefreshBox" <?php echo $autorefresh ? 'checked' : ''; ?>> En direct
         </label>
     </form>
-    <a href="?t=<?php echo $nextImage; ?>">
+    <a href="?d=<?php echo $nextImage; ?>">
         <button>&#9654;</button>
     </a>
 </div>
@@ -159,7 +170,8 @@ else {
 
 <script>
     const form = document.getElementById('selectorForm');
-    form.addEventListener('submit', function () {
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
         const dateInput = document.getElementById('dateInput');
         const timeInput = document.getElementById('timeInput');
         window.location.replace('?d=' + dateInput.value.replace(/-/g, '') + timeInput.value.replace(/:/g, ''));
