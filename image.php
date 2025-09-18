@@ -67,11 +67,12 @@ if ($currentIndex > 0) {
 if ($currentIndex < count($images) - 1)
     $nextImage = "$date" . $images[$currentIndex + 1];
 else {
-    $nextDate = date('Ymd', strtotime($date . ' +1 day'));
-    if ($nextDate > date('Ymd')) {
+    $nextDay = strtotime($date . ' +1 day');
+    if ($nextDay > time()) {
         $nextDate = date('Ymd');
-        $nextImage = "235959";
+        $nextImage = $nextDate . "235959";
     } else {
+        $nextDate = date('Ymd', $nextDay);
         $nextImage = $nextDate . "000000";
     }
 }
