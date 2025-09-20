@@ -17,12 +17,10 @@ $time = substr($datetime, 8, 6); // HHMMSS
 $dir = __DIR__;
 //$images = glob($dir . "/$date/$hour$minute??.jpg");
 //if (!$images) {
-    $images = glob($dir . "/$date/*.jpg");
-    if (!$images) {
-        http_response_code(404);
-        echo "Error: No images found.";
-        exit;
-    }
+$images = glob($dir . "/$date/*.jpg");
+if (!$images) {
+    http_response_code(404);
+}
 //}
 $images = array_map(function ($img) {
     return basename($img, '.jpg');
@@ -76,7 +74,6 @@ else {
         $nextImage = $nextDate . "000000";
     }
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -167,7 +164,14 @@ else {
     </a>
 </div>
 
-<img src="<?php echo "$currentImage" ?>.jpg" alt="Current image">
+<?php
+if (!$currentTime) {
+    echo "<p style='color: red;'>Pas d'image à cette date</p>";
+} else {
+    echo "<img src='$currentImage.jpg' alt='Webcam La Motte du Caire'>";
+}
+?>
+
 
 <script>
     const form = document.getElementById('selectorForm');
