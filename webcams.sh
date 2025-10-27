@@ -1,6 +1,6 @@
 #!/bin/bash
 
- cd $(dirname "$0")
+ cd "$(dirname "$0")" || exit
 
 . config.sh
 
@@ -23,9 +23,11 @@ for cam in "${CAMS[@]}"; do
   echo "Capturing $CAM_ID ($CAM_TYPE)..."
 
   if [ "$CAM_TYPE" = "usb" ]; then
-    fswebcam -q -i 0 -d "$SOURCE" -r 1280x720 --no-banner t.jpg
+    fswebcam -q -i 0 -d "$SOURCE" -r 1280x720 --no-banner -D 5 -S 50 -F 15 t.jpg || continue
   elif [ "$CAM_TYPE" = "rtsp" ]; then
-    ffmpeg -y -rtsp_transport tcp -i "$SOURCE" -vframes 1 -q:v 2 t.jpg -hide_banner -loglevel error
+    ffmpeg -y -rtsp_transport tcp -i "$SOURCE" -vframes 1 -q:v 2 t.jpg -hide_banner -loglevel error || continue
+  elif [ "$CAM_TYPE" = "web" ]; then
+    (ulimit -f 1024; wget -T 2 -t 2 "$SOURCE" -O t.jpg -q) || continue
   else
     echo "Unknown camera type: $CAM_TYPE"
     continue
@@ -36,12 +38,14 @@ for cam in "${CAMS[@]}"; do
       -fill white -undercolor '#40808080' -gravity SouthEast -pointsize 12 \
       -annotate +20+20 "$(date '+%Y-%m-%d %H:%M:%S')" \
       -quality 92 "$IMG_FILE"
+  rm -f t.jpg
   echo "${DATE}/${TIME}.jpg" > $LAST_NAME
   FTP_CMDS+="mkdir -p -f ~/$REMOTE_DIR/$CAM_ID/$DATE\n"
   FTP_CMDS+="put -O ~/$REMOTE_DIR/$CAM_ID \"${LAST_NAME}\"\n"
   FTP_CMDS+="put -O ~/$REMOTE_DIR/$CAM_ID/$DATE \"${IMG_FILE}\" -o \"${TIME}.jpg\"\n"
 done
 
+echo "Sending images to $FTP_HOST"
 echo -e "$FTP_CMDS bye" | lftp -u "$FTP_USER","$FTP_PASS" "$FTP_HOST"
 
 echo "Done."

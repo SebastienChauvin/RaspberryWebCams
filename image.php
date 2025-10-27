@@ -82,23 +82,16 @@ else {
     <title>Camera History Navigator</title>
     <style>
         body {
-            background: #1e1e1e;
             color: #fff;
             font-family: 'Segoe UI', sans-serif;
             text-align: center;
-            padding: 20px;
-        }
-
-        h1 {
-            margin-bottom: 30px;
         }
 
         img {
-            max-width: 90%;
-            max-height: 70vh;
+            max-width: 100%;
+            max-height: 100vh;
             border: 2px solid #444;
             border-radius: 8px;
-            margin: 20px auto;
             display: block;
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
         }
@@ -139,38 +132,104 @@ else {
         .nav-buttons {
             margin-top: 10px;
         }
+
+        .image-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .image-container .nav-buttons {
+            position: absolute;
+            top: 10px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 2;
+        }
+
+        .image-container:hover .nav-buttons {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            max-height: 100vh;
+            border: 2px solid #444;
+            border-radius: 8px;
+            display: block;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+        }
+
+        label {
+            background: #fff;
+            color: #000;
+            border-radius: 5px;
+            padding: 8px 12px;
+            margin: 5px;
+            font-size: 16px;
+            display: inline-block;
+        }
+
+        label input[type="checkbox"] {
+            margin-right: 6px;
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+            .image-container .nav-buttons {
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            .image-container .nav-buttons.show {
+                opacity: 1 !important;
+                pointer-events: auto !important;
+            }
+
+            .image-container .nav-toggle {
+                display: block !important;
+            }
+        }
     </style>
 </head>
 <body>
 
-<div class="nav-buttons">
-    <a href="?d=<?php echo $prevImage; ?>">
-        <button>&#9664;</button>
-    </a>
-    <form method="get" id="selectorForm">
-        <input type="date" id="dateInput" value="<?php
-        echo substr($date, 0, 4) . '-' . substr($date, 4, 2) . '-' . substr($date, 6, 2);
-        ?>" required>
-        <input type="time" id="timeInput"
-               value="<?php echo substr($currentTime, 0, 2) . ':' . substr($currentTime, 2, 2) . ':' . substr($currentTime, 4, 2);
-               ?>" required>
-        <button type="submit">Afficher</button>
-        <label>
-            <input type="checkbox" id="autorefreshBox" <?php echo $autorefresh ? 'checked' : ''; ?>> En direct
-        </label>
-    </form>
-    <a href="?d=<?php echo $nextImage; ?>">
-        <button>&#9654;</button>
-    </a>
+<div class="image-container">
+    <div class="nav-toggle" id="navToggle" style="position: absolute; top: 10px; right: 10px; z-index: 3; display: none;">
+        <button id="toggleNavBtn" style="padding: 8px 14px; font-size: 20px; background: #fff; color: #000; border-radius: 50%; border: 2px solid #444;">☰</button>
+    </div>
+    <div class="nav-buttons" id="navButtons">
+        <a href="?d=<?php echo $prevImage; ?>">
+            <button>&#9664;</button>
+        </a>
+        <form method="get" id="selectorForm" style="display: inline;">
+            <input type="date" id="dateInput" value="<?php
+            echo substr($date, 0, 4) . '-' . substr($date, 4, 2) . '-' . substr($date, 6, 2);
+            ?>" required>
+            <input type="time" id="timeInput"
+                   value="<?php echo substr($currentTime, 0, 2) . ':' . substr($currentTime, 2, 2) . ':' . substr($currentTime, 4, 2);
+                   ?>" required>
+            <button type="submit">Afficher</button>
+            <label>
+                <input type="checkbox" id="autorefreshBox" <?php echo $autorefresh ? 'checked' : ''; ?>> En direct
+            </label>
+        </form>
+        <a href="?d=<?php echo $nextImage; ?>">
+            <button>&#9654;</button>
+        </a>
+    </div>
+    <?php
+    if (!$currentTime) {
+        echo "<p style='color: red;'>Pas d'image à cette date</p>";
+    } else {
+        echo "<img src='$currentImage.jpg' alt='Webcam La Motte du Caire' style='display: block;'>";
+    }
+    ?>
 </div>
-
-<?php
-if (!$currentTime) {
-    echo "<p style='color: red;'>Pas d'image à cette date</p>";
-} else {
-    echo "<img src='$currentImage.jpg' alt='Webcam La Motte du Caire'>";
-}
-?>
 
 
 <script>
@@ -206,6 +265,34 @@ if (!$currentTime) {
     <?php if($autorefresh): ?>
     setTimeout(refresh, 20000);
     <?php endif; ?>
+</script>
+
+<script>
+    // Mobile nav toggle logic
+    function isMobile() {
+        return window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    }
+    if (isMobile()) {
+        const navButtons = document.getElementById('navButtons');
+        const navToggle = document.getElementById('navToggle');
+        const toggleNavBtn = document.getElementById('toggleNavBtn');
+        navButtons.classList.remove('show');
+        navToggle.style.display = 'block';
+        toggleNavBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            navButtons.classList.toggle('show');
+        });
+        // Hide nav on click outside
+        document.addEventListener('click', function(e) {
+            if (navButtons.classList.contains('show')) {
+                navButtons.classList.remove('show');
+            }
+        });
+        // Prevent nav from closing when clicking inside
+        navButtons.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
 </script>
 </body>
 </html>
