@@ -213,7 +213,7 @@ $prev5MinImage = $prev5MinDT->format('YmdHis');
             margin-right: 6px;
         }
 
-        .nav-buttons.nav-buttons-secondary {
+        .nav-buttons {
             top: 60px;
             left: 0;
             right: 0;
@@ -226,21 +226,14 @@ $prev5MinImage = $prev5MinDT->format('YmdHis');
             z-index: 2;
         }
 
-        .image-container:hover .nav-buttons.nav-buttons-secondary {
+        .image-container:hover .nav-buttons {
             opacity: 1;
             pointer-events: auto;
         }
 
-        @media (hover: none) and (pointer: coarse) {
-            .image-container .nav-buttons.nav-buttons-secondary {
-                opacity: 0;
-                pointer-events: none;
-            }
-
-            .image-container .nav-buttons.nav-buttons-secondary.show {
-                opacity: 1 !important;
-                pointer-events: auto !important;
-            }
+        .image-container .nav-buttons.show {
+            opacity: 1 !important;
+            pointer-events: auto !important;
         }
     </style>
 </head>
@@ -286,12 +279,12 @@ $prev5MinImage = $prev5MinDT->format('YmdHis');
             <?php endif; ?>
         </div>
     </div>
-    <div class="nav-buttons nav-buttons-secondary" style="top: 100px;">
+    <div class="nav-buttons" style="top: 100px;">
         <?php // Prev Day button leftmost ?>
         <div style="flex:1; display:flex; justify-content:flex-start;">
             <a href="?d=<?php echo $prevDayImage; ?>">
                 <button title="<?php echo date('d/m/Y', strtotime(substr($prevDayImage, 0, 8))); ?>">
-                   <&nbsp;Jour
+                    <&nbsp;Jour
                 </button>
             </a>
             <a href="?d=<?php echo $prevHourImage; ?>">
@@ -389,16 +382,23 @@ $prev5MinImage = $prev5MinDT->format('YmdHis');
 
     // Attach to all nav and form buttons
     document.addEventListener('DOMContentLoaded', function () {
+        const navs = document.querySelectorAll('.nav-buttons');
+        // Show nav buttons for 2 seconds after loading
+        navs.forEach(navButton => {
+            navButton.classList.add('show');
+        })
+        setTimeout(function () {
+            navs.forEach(navButtons => {
+                navButtons.classList.remove('show');
+            })
+        }, 2000);
+
         // Cancel autorefresh on any nav or form button click
-        document.querySelectorAll('.nav-buttons button, .nav-buttons-secondary button, #selectorForm button').forEach(btn => {
+        document.querySelectorAll('.nav-buttons button,  button, #selectorForm button').forEach(btn => {
             btn.addEventListener('click', cancelAutorefreshTimeout, {capture: true});
         });
         // Cancel autorefresh on hover/touch over image or navs
         const img = document.querySelector('.image-container img');
-        const navs = [
-            document.getElementById('navButtons'),
-            document.querySelector('.nav-buttons-secondary')
-        ];
         [img, ...navs].forEach(el => {
             if (!el) return;
             el.addEventListener('mouseenter', cancelAutorefreshTimeout);
@@ -415,33 +415,24 @@ $prev5MinImage = $prev5MinDT->format('YmdHis');
 
     if (isMobile()) {
         const navButtons = document.getElementById('navButtons');
-        const navButtonsSecondary = document.querySelector('.nav-buttons-secondary');
         const navToggle = document.getElementById('navToggle');
         const toggleNavBtn = document.getElementById('toggleNavBtn');
         navButtons.classList.remove('show');
-        if (navButtonsSecondary) navButtonsSecondary.classList.remove('show');
         navToggle.style.display = 'block';
         toggleNavBtn.addEventListener('click', function (e) {
             e.stopPropagation();
             cancelAutorefreshTimeout();
             navButtons.classList.toggle('show');
-            if (navButtonsSecondary) navButtonsSecondary.classList.toggle('show');
         });
         // Hide nav on click outside
         document.addEventListener('click', function (e) {
             if (navButtons.classList.contains('show')) {
                 navButtons.classList.remove('show');
             }
-            if (navButtonsSecondary && navButtonsSecondary.classList.contains('show')) {
-                navButtonsSecondary.classList.remove('show');
-            }
             startAutorefreshIfSet();
         });
         // Prevent nav from closing when clicking inside
         navButtons.addEventListener('click', function (e) {
-            e.stopPropagation();
-        });
-        if (navButtonsSecondary) navButtonsSecondary.addEventListener('click', function (e) {
             e.stopPropagation();
         });
     }
