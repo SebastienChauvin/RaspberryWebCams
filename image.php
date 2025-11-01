@@ -33,13 +33,24 @@ function timestampFromFilename($n)
     return DateTime::createFromFormat('His', $n);
 }
 
+function dateForFilename($filename)
+{
+    // Accepts HHMMSS or YYYYMMDDHHMMSS
+    if (preg_match('/^([0-9]{6})$/', $filename, $m)) {
+        return DateTime::createFromFormat('His', $m[1]);
+    } elseif (preg_match('/^([0-9]{8})([0-9]{6})$/', $filename, $m)) {
+        return DateTime::createFromFormat('YmdHis', $m[1] . $m[2]);
+    }
+    return false;
+}
+
 $closestIndex = -1;
 $closestDiff = PHP_INT_MAX;
-$targetTime = timestampFromFilename($time);
+$targetTime = dateForFilename($time);
 $currentIndex = 0;
 
 foreach ($images as $index => $img) {
-    $ts = timestampFromFilename($img);
+    $ts = dateForFilename($img);
     if (!$ts) continue;
 
     $diff = abs($ts->getTimestamp() - $targetTime->getTimestamp());
@@ -74,6 +85,31 @@ else {
         $nextImage = $nextDate . "000000";
     }
 }
+
+$now = new DateTime();
+$currentDT = DateTime::createFromFormat('YmdHis', $date . $currentTime);
+$prevHourDT = clone $currentDT;
+$prevHourDT->modify('-1 hour');
+$nextHourDT = clone $currentDT;
+$nextHourDT->modify('+1 hour');
+$nextHourImage = $nextHourDT <= $now ? $nextHourDT->format('YmdHis') : null;
+$prevHourImage = $prevHourDT->format('YmdHis');
+
+// Prev/Next Day
+$prevDayDT = clone $currentDT;
+$prevDayDT->modify('-1 day');
+$nextDayDT = clone $currentDT;
+$nextDayDT->modify('+1 day');
+$nextDayImage = $nextDayDT <= $now ? $nextDayDT->format('YmdHis') : null;
+$prevDayImage = $prevDayDT->format('YmdHis');
+
+// Prev/Next 5 minutes
+$prev5MinDT = clone $currentDT;
+$prev5MinDT->modify('-5 minutes');
+$next5MinDT = clone $currentDT;
+$next5MinDT->modify('+5 minutes');
+$next5MinImage = $next5MinDT <= $now ? $next5MinDT->format('YmdHis') : null;
+$prev5MinImage = $prev5MinDT->format('YmdHis');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -102,11 +138,9 @@ else {
         }
 
         input[type="date"], input[type="time"] {
-            padding: 10px 15px;
-            margin: 5px;
-            border-radius: 5px;
             border: none;
-            font-size: 16px;
+            padding-right: 8px;
+            font-size: 14px;
         }
 
         button {
@@ -179,19 +213,33 @@ else {
             margin-right: 6px;
         }
 
+        .nav-buttons.nav-buttons-secondary {
+            top: 60px;
+            left: 0;
+            right: 0;
+            position: absolute;
+            display: flex;
+            justify-content: space-between;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 2;
+        }
+
+        .image-container:hover .nav-buttons.nav-buttons-secondary {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
         @media (hover: none) and (pointer: coarse) {
-            .image-container .nav-buttons {
+            .image-container .nav-buttons.nav-buttons-secondary {
                 opacity: 0;
                 pointer-events: none;
             }
 
-            .image-container .nav-buttons.show {
+            .image-container .nav-buttons.nav-buttons-secondary.show {
                 opacity: 1 !important;
                 pointer-events: auto !important;
-            }
-
-            .image-container .nav-toggle {
-                display: block !important;
             }
         }
     </style>
@@ -199,28 +247,86 @@ else {
 <body>
 
 <div class="image-container">
-    <div class="nav-toggle" id="navToggle" style="position: absolute; top: 10px; right: 10px; z-index: 3; display: none;">
-        <button id="toggleNavBtn" style="padding: 8px 14px; font-size: 20px; background: #fff; color: #000; border-radius: 50%; border: 2px solid #444;">☰</button>
+    <div class="nav-toggle" id="navToggle"
+         style="position: absolute; top: 10px; right: 10px; z-index: 3; display: none;">
+        <button id="toggleNavBtn"
+                style="padding: 8px 14px; font-size: 20px; background: #fff; color: #000; border-radius: 50%; border: 2px solid #444;">
+            ☰
+        </button>
     </div>
     <div class="nav-buttons" id="navButtons">
-        <a href="?d=<?php echo $prevImage; ?>">
-            <button>&#9664;</button>
-        </a>
-        <form method="get" id="selectorForm" style="display: inline;">
-            <input type="date" id="dateInput" value="<?php
-            echo substr($date, 0, 4) . '-' . substr($date, 4, 2) . '-' . substr($date, 6, 2);
-            ?>" required>
-            <input type="time" id="timeInput"
-                   value="<?php echo substr($currentTime, 0, 2) . ':' . substr($currentTime, 2, 2) . ':' . substr($currentTime, 4, 2);
-                   ?>" required>
-            <button type="submit">Afficher</button>
-            <label>
-                <input type="checkbox" id="autorefreshBox" <?php echo $autorefresh ? 'checked' : ''; ?>> En direct
-            </label>
-        </form>
-        <a href="?d=<?php echo $nextImage; ?>">
-            <button>&#9654;</button>
-        </a>
+        <div style="flex:1; display:flex; justify-content:flex-start;">
+            <a href="?d=<?php echo $prevImage; ?>">
+                <button>&#9664;</button>
+            </a>
+        </div>
+        <div style="display:flex; justify-content:center;">
+            <form method="get" id="selectorForm" style="display: inline;">
+                <label for="dateInput">
+                    <input type="date" id="dateInput" value="<?php
+                    echo substr($date, 0, 4) . '-' . substr($date, 4, 2) . '-' . substr($date, 6, 2);
+                    ?>" required>
+                </label>
+                <label for="timeInput">
+                    <input type="time" id="timeInput"
+                           value="<?php echo substr($currentTime, 0, 2) . ':' . substr($currentTime, 2, 2) . ':' . substr($currentTime, 4, 2);
+                           ?>" required>
+                </label>
+                <button type="submit">Afficher</button>
+                <label>
+                    <input type="checkbox" id="autorefreshBox" <?php echo $autorefresh ? 'checked' : ''; ?>> En direct
+                </label>
+            </form>
+        </div>
+        <div style="flex:1; display:flex; justify-content:flex-end;">
+            <?php if ($currentIndex < count($images) - 1): ?>
+                <a href="?d=<?php echo $nextImage; ?>">
+                    <button>&#9654;</button>
+                </a>
+            <?php endif; ?>
+        </div>
+    </div>
+    <div class="nav-buttons nav-buttons-secondary" style="top: 100px;">
+        <?php // Prev Day button leftmost ?>
+        <div style="flex:1; display:flex; justify-content:flex-start;">
+            <a href="?d=<?php echo $prevDayImage; ?>">
+                <button title="<?php echo date('d/m/Y', strtotime(substr($prevDayImage, 0, 8))); ?>">
+                   <&nbsp;Jour
+                </button>
+            </a>
+            <a href="?d=<?php echo $prevHourImage; ?>">
+                <button title="<?php echo date('H:i:s', strtotime(substr($prevHourImage, -6))); ?>">
+                    <&nbsp;Heure
+                </button>
+            </a>
+            <a href="?d=<?php echo $prev5MinImage; ?>">
+                <button title="<?php echo date('H:i:s', strtotime(substr($prev5MinImage, -6))); ?>">
+                    <&nbsp;5&nbsp;min
+                </button>
+        </div>
+        <div style="flex:1; display:flex; justify-content:flex-end;">
+            <?php if ($next5MinImage): ?>
+                <a href="?d=<?php echo $next5MinImage; ?>">
+                    <button title="<?php echo date('H:i:s', strtotime(substr($next5MinImage, -6))); ?>">
+                        >&nbsp;5&nbsp;min
+                    </button>
+                </a>
+            <?php endif; ?>
+            <?php if ($nextHourImage): ?>
+                <a href="?d=<?php echo $nextHourImage; ?>">
+                    <button title="<?php echo date('H:i:s', strtotime(substr($nextHourImage, -6))); ?>">
+                        >&nbsp;Heure
+                    </button>
+                </a>
+            <?php endif; ?>
+            <?php if ($nextDayImage): ?>
+                <a href="?d=<?php echo $nextDayImage; ?>">
+                    <button title="<?php echo date('d/m/Y', strtotime(substr($nextDayImage, 0, 8))); ?>">
+                        >&nbsp;Jour
+                    </button>
+                </a>
+            <?php endif; ?>
+        </div>
     </div>
     <?php
     if (!$currentTime) {
@@ -261,10 +367,44 @@ else {
         box.addEventListener('change', refresh);
     }
 
-    // Auto-refresh every 10s if enabled
-    <?php if($autorefresh): ?>
-    setTimeout(refresh, 20000);
-    <?php endif; ?>
+    // Cancel autorefresh timeout when clicking any nav or form button
+    let autorefreshTimeoutId = null;
+
+    function startAutorefreshIfSet() {
+        if (!autorefreshTimeoutId) {
+            <?php if($autorefresh): ?>
+            autorefreshTimeoutId = setTimeout(refresh, 20000);
+            <?php endif; ?>
+        }
+    }
+
+    startAutorefreshIfSet();
+
+    function cancelAutorefreshTimeout() {
+        if (autorefreshTimeoutId) {
+            clearTimeout(autorefreshTimeoutId);
+            autorefreshTimeoutId = null;
+        }
+    }
+
+    // Attach to all nav and form buttons
+    document.addEventListener('DOMContentLoaded', function () {
+        // Cancel autorefresh on any nav or form button click
+        document.querySelectorAll('.nav-buttons button, .nav-buttons-secondary button, #selectorForm button').forEach(btn => {
+            btn.addEventListener('click', cancelAutorefreshTimeout, {capture: true});
+        });
+        // Cancel autorefresh on hover/touch over image or navs
+        const img = document.querySelector('.image-container img');
+        const navs = [
+            document.getElementById('navButtons'),
+            document.querySelector('.nav-buttons-secondary')
+        ];
+        [img, ...navs].forEach(el => {
+            if (!el) return;
+            el.addEventListener('mouseenter', cancelAutorefreshTimeout);
+            el.addEventListener('mouseout', startAutorefreshIfSet);
+        });
+    });
 </script>
 
 <script>
@@ -272,24 +412,36 @@ else {
     function isMobile() {
         return window.matchMedia('(hover: none) and (pointer: coarse)').matches;
     }
+
     if (isMobile()) {
         const navButtons = document.getElementById('navButtons');
+        const navButtonsSecondary = document.querySelector('.nav-buttons-secondary');
         const navToggle = document.getElementById('navToggle');
         const toggleNavBtn = document.getElementById('toggleNavBtn');
         navButtons.classList.remove('show');
+        if (navButtonsSecondary) navButtonsSecondary.classList.remove('show');
         navToggle.style.display = 'block';
-        toggleNavBtn.addEventListener('click', function(e) {
+        toggleNavBtn.addEventListener('click', function (e) {
             e.stopPropagation();
+            cancelAutorefreshTimeout();
             navButtons.classList.toggle('show');
+            if (navButtonsSecondary) navButtonsSecondary.classList.toggle('show');
         });
         // Hide nav on click outside
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             if (navButtons.classList.contains('show')) {
                 navButtons.classList.remove('show');
             }
+            if (navButtonsSecondary && navButtonsSecondary.classList.contains('show')) {
+                navButtonsSecondary.classList.remove('show');
+            }
+            startAutorefreshIfSet();
         });
         // Prevent nav from closing when clicking inside
-        navButtons.addEventListener('click', function(e) {
+        navButtons.addEventListener('click', function (e) {
+            e.stopPropagation();
+        });
+        if (navButtonsSecondary) navButtonsSecondary.addEventListener('click', function (e) {
             e.stopPropagation();
         });
     }
