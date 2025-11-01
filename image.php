@@ -235,6 +235,13 @@ $prev5MinImage = $prev5MinDT->format('YmdHis');
             opacity: 1 !important;
             pointer-events: auto !important;
         }
+
+        /*TODO fix nav-button layout and functionality on mobile */
+        @media (hover: none) or (max-device-width: 480px) {
+            .image-container .nav-buttons {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -382,17 +389,18 @@ $prev5MinImage = $prev5MinDT->format('YmdHis');
 
     // Attach to all nav and form buttons
     document.addEventListener('DOMContentLoaded', function () {
-        const navs = document.querySelectorAll('.nav-buttons');
-        // Show nav buttons for 2 seconds after loading
-        navs.forEach(navButton => {
-            navButton.classList.add('show');
-        })
-        setTimeout(function () {
-            navs.forEach(navButtons => {
-                navButtons.classList.remove('show');
+        if (!isMobile()) {
+            const navs = document.querySelectorAll('.nav-buttons');
+            // Show nav buttons for 2 seconds after loading
+            navs.forEach(navButton => {
+                navButton.classList.add('show');
             })
-        }, 2000);
-
+            setTimeout(function () {
+                navs.forEach(navButtons => {
+                    navButtons.classList.remove('show');
+                })
+            }, 2000);
+        }
         // Cancel autorefresh on any nav or form button click
         document.querySelectorAll('.nav-buttons button,  button, #selectorForm button').forEach(btn => {
             btn.addEventListener('click', cancelAutorefreshTimeout, {capture: true});
