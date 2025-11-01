@@ -7,6 +7,10 @@
 // - From 7 to 30 days old, keep one image every hour
 // - Older than 30 days, keep one image per day (the one closest to noon)
 
+// Enable implicit flushing to echo output progressively
+ob_implicit_flush();
+echo "<pre>\n";
+
 // Base directory
 $baseDir = __DIR__;
 
@@ -14,20 +18,50 @@ $baseDir = __DIR__;
 $dirs = array_filter(glob($baseDir . '/*'), 'is_dir');
 sort($dirs);
 
+if (empty($dirs)) {
+    echo "No directories found in $baseDir\n";
+    exit;
+}
+echo "Found " . count($dirs) . " directories.\n";
+if (isset($_GET['index'])) {
+    $dirs = [array_values($dirs)[intval($_GET['index'])]];
+} else if (isset($_GET['all'])) {
+    // keep all directories
+} else {
+    echo "Use ?all=1 to process all directories or ?index=N to process a specific one.\n";
+    exit;
+}
+
 // Helper: extract timestamp
-function timestampFromFilename($filename) {
+function dateForFilename($dir, $filename)
+{
     $base = basename($filename, '.jpg');
-    return DateTime::createFromFormat('Ymd_His', $base);
+    $d = basename($dir);
+    return DateTime::createFromFormat('Ymd_His', $d . "_" . $base);
 }
 
 // Retention thresholds
 $now = time();
-$keep24h   = $now - 24 * 3600;
-$keep7d    = $now - 7  * 24 * 3600;
-$keep30d   = $now - 30 * 24 * 3600;
+$keep24h = $now - 24 * 3600;
+$keep7d = $now - 7 * 24 * 3600;
+$keep30d = $now - 30 * 24 * 3600;
 
+echo "Starting cleanup at " . date('Y-m-d H:i:s', $now) . " for " . count($dirs) . " directories \n";
 foreach ($dirs as $dir) {
     echo "Cleaning directory: $dir\n";
+    $lastDate = dateForFilename($dir, "000000.jpg");
+    $lastTime = $lastDate->getTimestamp();
+    if ($lastTime > $keep24h) {
+        echo "Keeping everything\n";
+        continue;
+    }
+    if ($lastTime < $keep30d) {
+        echo "Keeping one image per day.\n";
+    } elseif ($lastTime < $keep7d) {
+        echo "Keeping one image per hour.\n";
+    } else {
+        echo "Keeping one image every 5 minutes.\n";
+    }
     $images = glob($dir . '/*.jpg');
     sort($images);
 
@@ -37,12 +71,16 @@ foreach ($dirs as $dir) {
     $lastKept = [
         '5min' => 0,
         'hour' => 0,
-        'day'  => []
+        'day' => []
     ];
 
+    echo "Found " . count($images) . " images\n";
     foreach ($images as $img) {
-        $ts = timestampFromFilename($img);
-        if (!$ts) continue;
+        $ts = dateForFilename($dir, $img);
+        if (!$ts) {
+            $skipped[] = $img;
+            continue;
+        }
 
         $t = $ts->getTimestamp();
 
@@ -83,7 +121,7 @@ foreach ($dirs as $dir) {
             $kept[] = $img;
         } else {
             // Prefer the one closest to 12:00
-            $existing = timestampFromFilename($lastKept['day'][$dayKey]);
+            $existing = dateForFilename($dir, $lastKept['day'][$dayKey]);
             $target = strtotime($dayKey . ' 12:00:00');
             $diffExisting = abs($existing->getTimestamp() - $target);
             $diffNew = abs($t - $target);
@@ -108,6 +146,18 @@ foreach ($dirs as $dir) {
         }
     }
 
+    if (isset($skipped)) {
+        echo "Skipped " . count($skipped)
+            . " files due to naming issues : " . print_r(array_slice($skipped, 0, 3), true)
+            . "\n";
+        $base = basename($skipped[0], '.jpg');
+        $d = basename($dir);
+        echo "Example of problematic filename timestamp extraction: ";
+        echo $d . "_" . $base;
+        echo DateTime::createFromFormat('Ymd_His', $d . "_" . $base);
+        echo "\n";
+    }
     echo "Kept " . count($kept) . " images, deleted " . count($toDelete) . "\n\n";
 }
+echo "Cleanup completed at " . date('Y-m-d H:i:s') . "\n";
 ?>
