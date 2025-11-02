@@ -236,6 +236,10 @@ $prev5MinImage = $prev5MinDT->format('YmdHis');
             pointer-events: auto !important;
         }
 
+        button:disabled {
+            opacity: 0.2;
+        }
+
         /*TODO fix nav-button layout and functionality on mobile */
         @media (hover: none) or (max-device-width: 480px) {
             .image-container .nav-buttons {
@@ -305,27 +309,25 @@ $prev5MinImage = $prev5MinDT->format('YmdHis');
                 </button>
         </div>
         <div style="flex:1; display:flex; justify-content:flex-end;">
-            <?php if ($next5MinImage): ?>
-                <a href="?d=<?php echo $next5MinImage; ?>">
-                    <button title="<?php echo date('H:i:s', strtotime(substr($next5MinImage, -6))); ?>">
-                        >&nbsp;5&nbsp;min
-                    </button>
-                </a>
-            <?php endif; ?>
-            <?php if ($nextHourImage): ?>
-                <a href="?d=<?php echo $nextHourImage; ?>">
-                    <button title="<?php echo date('H:i:s', strtotime(substr($nextHourImage, -6))); ?>">
-                        >&nbsp;Heure
-                    </button>
-                </a>
-            <?php endif; ?>
-            <?php if ($nextDayImage): ?>
-                <a href="?d=<?php echo $nextDayImage; ?>">
-                    <button title="<?php echo date('d/m/Y', strtotime(substr($nextDayImage, 0, 8))); ?>">
-                        >&nbsp;Jour
-                    </button>
-                </a>
-            <?php endif; ?>
+
+            <a href="?d=<?php echo $next5MinImage; ?>">
+                <button title="<?php echo date('H:i:s', strtotime(substr($next5MinImage, -6))); ?>"
+                        <?php echo !$next5MinImage ? "disabled" : "" ?>>
+                    >&nbsp;5&nbsp;min
+                </button>
+            </a>
+            <a href="?d=<?php echo $nextHourImage; ?>">
+                <button title="<?php echo date('H:i:s', strtotime(substr($nextHourImage, -6))); ?>"
+                        <?php echo !$nextHourImage ? "disabled" : "" ?>>
+                    >&nbsp;Heure
+                </button>
+            </a>
+            <a href="?d=<?php echo $nextDayImage; ?>">
+                <button title="<?php echo date('d/m/Y', strtotime(substr($nextDayImage, 0, 8))); ?>"
+                        <?php echo !$nextDayImage ? "disabled" : "" ?>>
+                    >&nbsp;Jour
+                </button>
+            </a>
         </div>
     </div>
     <?php

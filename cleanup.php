@@ -160,4 +160,7 @@ foreach ($dirs as $dir) {
     echo "Kept " . count($kept) . " images, deleted " . count($toDelete) . "\n\n";
 }
 echo "Cleanup completed at " . date('Y-m-d H:i:s') . "\n";
+
+// Following does not work on OVH shared hosting
+//echo "free space : " . disk_free_space($baseDir) / (1024 * 1024) . " MB\n";
 ?>
