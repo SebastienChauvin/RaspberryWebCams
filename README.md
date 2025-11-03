@@ -37,6 +37,6 @@ sudo overlayroot-chroot
 ```
 # Debugging
 ```shell
-sudo systemctl restart camera.service
+sudo systemctl restart camera.service # Restart the service, that will run onstart.sh and push PHP files to FTP
 sudo journalctl 
 ```
