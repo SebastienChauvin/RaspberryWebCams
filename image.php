@@ -117,6 +117,8 @@ $prev5MinImage = $prev5MinDT->format('YmdHis');
     <meta charset="UTF-8">
     <title>Camera History Navigator</title>
     <style>
+        html, body {margin: 0; height: 100%; overflow: hidden}
+
         body {
             color: #fff;
             font-family: 'Segoe UI', sans-serif;
